@@ -1,28 +1,29 @@
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'react-toastify'
-import FileUploadZone from '@/components/molecules/FileUploadZone'
-import ProcessingStatus from '@/components/molecules/ProcessingStatus'
-import WorksheetCard from '@/components/molecules/WorksheetCard'
-import Button from '@/components/atoms/Button'
-import FileIcon from '@/components/atoms/FileIcon'
-import ApperIcon from '@/components/ApperIcon'
-import fileProcessingService from '@/services/api/fileProcessingService'
+import React, { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { toast } from "react-toastify";
+import fileProcessingService from "@/services/api/fileProcessingService";
+import ApperIcon from "@/components/ApperIcon";
+import FileUploadZone from "@/components/molecules/FileUploadZone";
+import WorksheetCard from "@/components/molecules/WorksheetCard";
+import ProcessingStatus from "@/components/molecules/ProcessingStatus";
+import FileIcon from "@/components/atoms/FileIcon";
+import Button from "@/components/atoms/Button";
 
 const FileProcessor = () => {
-  const [file, setFile] = useState(null)
+const [file, setFile] = useState(null)
   const [worksheets, setWorksheets] = useState([])
   const [workbook, setWorkbook] = useState(null)
+  const [selectedWorksheets, setSelectedWorksheets] = useState([])
   const [stage, setStage] = useState('idle') // idle, upload, analyze, process, download, complete
   const [progress, setProgress] = useState(0)
   const [currentWorksheet, setCurrentWorksheet] = useState('')
   const [downloadReady, setDownloadReady] = useState(null)
   const [error, setError] = useState(null)
-
-  const resetState = () => {
+const resetState = () => {
     setFile(null)
     setWorksheets([])
     setWorkbook(null)
+    setSelectedWorksheets([])
     setStage('idle')
     setProgress(0)
     setCurrentWorksheet('')
@@ -46,9 +47,10 @@ const FileProcessor = () => {
       // Analyze workbook
       const result = await fileProcessingService.analyzeWorkbook(selectedFile)
       
-      setFile(result.file)
+setFile(result.file)
       setWorksheets(result.worksheets)
       setWorkbook(result.workbook)
+      setSelectedWorksheets(result.worksheets.map(ws => ws.index))
       setStage('idle')
       setProgress(100)
 
@@ -60,24 +62,27 @@ const FileProcessor = () => {
     }
   }
 
-  const handleProcessFile = async () => {
-    if (!workbook || !worksheets.length) return
+const handleProcessFile = async () => {
+    if (!workbook || !worksheets.length || !selectedWorksheets.length) return
 
     try {
       setError(null)
       setStage('process')
       setProgress(0)
 
+      // Filter selected worksheets
+      const selectedWorksheetObjects = worksheets.filter(ws => selectedWorksheets.includes(ws.index))
+
       // Process worksheets
       const zip = await fileProcessingService.processWorksheets(
         workbook, 
-        worksheets,
-        (progressValue) => {
+        selectedWorksheetObjects,
+(progressValue) => {
           setProgress(progressValue)
           if (progressValue < 100) {
-            const currentIndex = Math.floor((progressValue / 100) * worksheets.length)
-            if (worksheets[currentIndex]) {
-              setCurrentWorksheet(worksheets[currentIndex].name)
+            const currentIndex = Math.floor((progressValue / 100) * selectedWorksheetObjects.length)
+            if (selectedWorksheetObjects[currentIndex]) {
+              setCurrentWorksheet(selectedWorksheetObjects[currentIndex].name)
             }
           }
         }
@@ -90,10 +95,10 @@ const FileProcessor = () => {
       const download = await fileProcessingService.generateDownload(zip, file.name)
       
       setDownloadReady(download)
-      setStage('complete')
+setStage('complete')
       setProgress(100)
 
-      toast.success('Files processed successfully! Ready for download.')
+      toast.success(`${selectedWorksheetObjects.length} worksheets processed successfully! Ready for download.`)
     } catch (err) {
       setError(err.message)
       setStage('idle')
@@ -111,6 +116,26 @@ const FileProcessor = () => {
   const formatFileSize = (bytes) => {
     const mb = bytes / (1024 * 1024)
     return mb < 1 ? `${(bytes / 1024).toFixed(0)}KB` : `${mb.toFixed(1)}MB`
+}
+
+  const handleWorksheetSelection = (worksheetIndex, selected) => {
+    setSelectedWorksheets(prev => {
+      if (selected) {
+        return [...prev, worksheetIndex]
+      } else {
+        return prev.filter(index => index !== worksheetIndex)
+      }
+    })
+  }
+
+  const handleSelectAll = () => {
+    setSelectedWorksheets(worksheets.map(ws => ws.index))
+    toast.success('All worksheets selected')
+  }
+
+  const handleSelectNone = () => {
+    setSelectedWorksheets([])
+    toast.info('All worksheets deselected')
   }
 
   return (
@@ -191,10 +216,12 @@ const FileProcessor = () => {
                 <h3 className="font-medium text-surface-900 truncate">
                   {file.name}
                 </h3>
-                <div className="flex items-center space-x-4 mt-1 text-sm text-surface-600">
+<div className="flex items-center space-x-4 mt-1 text-sm text-surface-600">
                   <span>{formatFileSize(file.size)}</span>
                   <span>•</span>
                   <span>{worksheets.length} worksheets</span>
+                  <span>•</span>
+                  <span>{selectedWorksheets.length} selected</span>
                 </div>
               </div>
               
@@ -210,7 +237,7 @@ const FileProcessor = () => {
           </div>
 
           {/* Worksheets List */}
-          <div className="space-y-4">
+<div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-medium text-surface-900">
                 Worksheets Found ({worksheets.length})
@@ -243,19 +270,51 @@ const FileProcessor = () => {
                   variant="primary"
                   icon="Play"
                   onClick={handleProcessFile}
-                  disabled={stage !== 'idle' || worksheets.length === 0}
+                  disabled={stage !== 'idle' || selectedWorksheets.length === 0}
                 >
-                  Split Worksheets
+                  Split Selected Worksheets ({selectedWorksheets.length})
                 </Button>
               )}
             </div>
+
+            {/* Selection Controls */}
+            {stage !== 'complete' && (
+              <div className="flex items-center justify-between bg-surface-50 rounded-lg p-3">
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm text-surface-600">
+                    {selectedWorksheets.length} of {worksheets.length} worksheets selected
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSelectAll}
+                    disabled={selectedWorksheets.length === worksheets.length}
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSelectNone}
+                    disabled={selectedWorksheets.length === 0}
+                  >
+                    Select None
+                  </Button>
+                </div>
+              </div>
+            )}
             
-            <div className="grid gap-3">
+<div className="grid gap-3">
               {worksheets.map((worksheet, index) => (
                 <WorksheetCard
                   key={`${worksheet.name}-${index}`}
                   worksheet={worksheet}
                   index={index}
+                  selected={selectedWorksheets.includes(worksheet.index)}
+                  onSelectionChange={(selected) => handleWorksheetSelection(worksheet.index, selected)}
+                  disabled={stage !== 'idle'}
                 />
               ))}
             </div>
@@ -288,8 +347,8 @@ const FileProcessor = () => {
           <h3 className="text-lg font-medium text-green-800 mb-2">
             Processing Complete!
           </h3>
-          <p className="text-green-700 mb-4">
-            Your {worksheets.length} worksheets have been split into separate files and packaged into a ZIP archive.
+<p className="text-green-700 mb-4">
+            Your {selectedWorksheets.length} selected worksheets have been split into separate files and packaged into a ZIP archive.
           </p>
           
           <div className="flex justify-center space-x-3">

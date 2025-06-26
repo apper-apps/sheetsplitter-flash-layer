@@ -75,14 +75,14 @@ class FileProcessingService {
     })
   }
 
-  async processWorksheets(workbook, worksheets, onProgress) {
+async processWorksheets(workbook, selectedWorksheets, onProgress) {
     await delay(500)
     
     const zip = new JSZip()
-    const totalSheets = worksheets.length
+    const totalSheets = selectedWorksheets.length
     
-    for (let i = 0; i < worksheets.length; i++) {
-      const worksheet = worksheets[i]
+    for (let i = 0; i < selectedWorksheets.length; i++) {
+const worksheet = selectedWorksheets[i]
       
       // Create new workbook with single sheet
       const newWorkbook = XLSX.utils.book_new()
