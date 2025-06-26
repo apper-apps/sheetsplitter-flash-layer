@@ -1,6 +1,7 @@
-import { motion } from 'framer-motion'
-import FileProcessor from '@/components/organisms/FileProcessor'
-import ApperIcon from '@/components/ApperIcon'
+import { motion } from "framer-motion";
+import React from "react";
+import ApperIcon from "@/components/ApperIcon";
+import FileProcessor from "@/components/organisms/FileProcessor";
 
 const Home = () => {
   const features = [
@@ -78,19 +79,22 @@ const Home = () => {
       {/* Info Section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.4 }}
         className="bg-surface-50 rounded-xl p-8"
       >
         <div className="max-w-3xl mx-auto text-center space-y-6">
-          <h2 className="text-2xl font-bold text-surface-900">
-            How It Works
-          </h2>
+          <div className="space-y-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-surface-900">
+              How It
+              <span className="block text-primary">Works</span>
+            </h2>
+          </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="space-y-3">
-              <div className="w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center mx-auto font-bold">
-                1
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
+            <div className="space-y-4">
+              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto">
+                <ApperIcon name="Upload" size={24} className="text-primary" />
               </div>
               <h3 className="font-medium text-surface-900">Upload File</h3>
               <p className="text-sm text-surface-600">
@@ -98,9 +102,9 @@ const Home = () => {
               </p>
             </div>
             
-            <div className="space-y-3">
-              <div className="w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center mx-auto font-bold">
-                2
+            <div className="space-y-4">
+              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto">
+                <ApperIcon name="Settings" size={24} className="text-primary" />
               </div>
               <h3 className="font-medium text-surface-900">Process</h3>
               <p className="text-sm text-surface-600">
@@ -108,9 +112,9 @@ const Home = () => {
               </p>
             </div>
             
-            <div className="space-y-3">
-              <div className="w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center mx-auto font-bold">
-                3
+            <div className="space-y-4">
+              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto">
+                <ApperIcon name="Download" size={24} className="text-primary" />
               </div>
               <h3 className="font-medium text-surface-900">Download</h3>
               <p className="text-sm text-surface-600">
