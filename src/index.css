@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import react-toastify CSS */
+@import 'react-toastify/dist/ReactToastify.css';
+
+/* Ensure scrollbars are visible */
+body {
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0;
+  min-height: 100vh;
+}
+
+/* Prevent horizontal overflow */
+* {
+  max-width: 100%;
+}
+
+/* Main content areas must allow scroll */
+.main-content {
+  overflow-y: auto;
+  height: 100vh;
+}
+
+@layer utilities {
+  /* Only use scrollbar-hide for specific UI elements, never main content */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Custom file drop zone styles */
+.file-drop-zone {
+  transition: all 0.2s ease-out;
+}
+
+.file-drop-zone:hover {
+  filter: brightness(1.05);
+  transform: scale(1.02);
+}
+
+.file-drop-zone.drag-over {
+  border-style: solid;
+  background-color: #f0f9ff;
+  border-color: #2563eb;
+}
+
+/* Progress bar segments */
+.progress-segment {
+  transition: all 0.3s ease-out;
+}
+
+.progress-segment.active {
+  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 100%);
+}
+
+.progress-segment.completed {
+  background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+}
+
+/* Excel file icon styling */
+.excel-icon {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+/* Worksheet card hover effects */
+.worksheet-card {
+  transition: all 0.2s ease-out;
+}
+
+.worksheet-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}

@@ -1,0 +1,30 @@
+[
+  {
+    "Id": 1,
+    "fileId": "example_1",
+    "status": "completed",
+    "progress": 100,
+    "worksheets": [
+      {
+        "name": "Sales Data",
+        "rowCount": 1247,
+        "columnCount": 8,
+        "index": 0
+      },
+      {
+        "name": "Customer List",
+        "rowCount": 892,
+        "columnCount": 12,
+        "index": 1
+      },
+      {
+        "name": "Inventory",
+        "rowCount": 534,
+        "columnCount": 6,
+        "index": 2
+      }
+    ],
+    "downloadUrl": "/downloads/example_split.zip",
+    "createdAt": "2024-01-15T10:30:00Z"
+  }
+]
