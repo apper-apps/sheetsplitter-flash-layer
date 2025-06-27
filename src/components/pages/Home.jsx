@@ -4,29 +4,6 @@ import ApperIcon from "@/components/ApperIcon";
 import FileProcessor from "@/components/organisms/FileProcessor";
 
 const Home = () => {
-  const features = [
-    {
-      icon: 'Upload',
-      title: 'Easy Upload',
-      description: 'Drag and drop or click to upload your Excel workbook'
-    },
-    {
-      icon: 'Layers',
-      title: 'Auto Detection',
-      description: 'Automatically detects and lists all worksheets in your file'
-    },
-    {
-      icon: 'Scissors',
-      title: 'Smart Splitting',
-      description: 'Splits each worksheet into its own Excel file while preserving formatting'
-    },
-    {
-      icon: 'Archive',
-      title: 'ZIP Download',
-      description: 'Downloads all separated files in a convenient ZIP archive'
-    }
-  ]
-
   return (
     <div className="space-y-12">
       {/* Hero Section */}
@@ -37,33 +14,14 @@ const Home = () => {
         className="text-center space-y-6"
       >
         <div className="space-y-4">
-          <h1 className="text-4xl md:text-5xl font-bold text-surface-900">
+          <h1 className="text-4xl md:text-5xl font-bold text-surface-900 leading-relaxed">
             Split Excel Worksheets
-            <span className="block text-primary">Into Separate Files</span>
+            <span className="block text-primary leading-relaxed">Into Separate Files</span>
           </h1>
           <p className="text-xl text-surface-600 max-w-2xl mx-auto">
             Upload your multi-sheet Excel workbook and automatically split each worksheet 
             into individual Excel files. Download everything as a organized ZIP archive.
           </p>
-        </div>
-
-        {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
-          {features.map((feature, index) => (
-            <motion.div
-              key={feature.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
-              className="bg-white rounded-lg border border-surface-200 p-6 text-center"
-            >
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <ApperIcon name={feature.icon} size={24} className="text-primary" />
-              </div>
-              <h3 className="font-medium text-surface-900 mb-2">{feature.title}</h3>
-              <p className="text-sm text-surface-600">{feature.description}</p>
-            </motion.div>
-          ))}
         </div>
       </motion.div>
 
@@ -83,11 +41,10 @@ animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.4 }}
         className="bg-surface-50 rounded-xl p-8"
       >
-        <div className="max-w-3xl mx-auto text-center space-y-6">
+<div className="max-w-3xl mx-auto text-center space-y-6">
           <div className="space-y-4">
-            <h2 className="text-3xl md:text-4xl font-bold text-surface-900">
-              How It
-              <span className="block text-primary">Works</span>
+            <h2 className="text-3xl md:text-4xl font-bold text-surface-900 leading-relaxed" style={{ fontFamily: 'Verdana, sans-serif', fontSize: '2.125rem' }}>
+              How It <span className="text-primary">Works</span>
             </h2>
           </div>
           
@@ -141,6 +98,14 @@ animate={{ opacity: 1, y: 0 }}
                 <ApperIcon name="Download" size={16} className="text-purple-600" />
                 <span>Easy Download</span>
               </div>
+            </div>
+</div>
+          
+          {/* Privacy Statement */}
+          <div className="border-t border-surface-200 pt-6 mt-8">
+            <div className="flex items-center justify-center space-x-2 text-sm text-surface-600">
+              <ApperIcon name="Shield" size={16} className="text-green-600" />
+              <span>Your data never leaves the browser and is never stored, ensuring complete data safety.</span>
             </div>
           </div>
         </div>
