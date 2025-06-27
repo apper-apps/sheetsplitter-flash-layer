@@ -2,6 +2,7 @@ import * as XLSX from 'xlsx'
 import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
 import { jsPDF } from 'jspdf'
+import 'jspdf-autotable'
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
 class FileProcessingService {
@@ -84,50 +85,64 @@ async processWorksheets(workbook, selectedWorksheets, onProgress) {
     for (let i = 0; i < selectedWorksheets.length; i++) {
       const worksheet = selectedWorksheets[i]
       
-      // Get worksheet data
+      // Get worksheet data with formatting
       const sheet = workbook.Sheets[worksheet.name]
-      const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
+      const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false })
+      
+      // Extract cell formatting information
+      const cellFormatting = this.extractCellFormatting(sheet)
       
       // Create PDF
       const pdf = new jsPDF('p', 'mm', 'a4')
-      const pageWidth = pdf.internal.pageSize.getWidth()
-      const pageHeight = pdf.internal.pageSize.getHeight()
-      const margin = 10
-      const lineHeight = 6
-      let yPosition = margin + 10
       
-      // Add title
-      pdf.setFontSize(16)
-      pdf.text(worksheet.name, margin, yPosition)
-      yPosition += lineHeight * 2
+      // Prepare table data with formatting
+      const tableData = this.prepareTableData(jsonData, cellFormatting, sheet)
       
-      // Add data
-      pdf.setFontSize(10)
-      for (let rowIndex = 0; rowIndex < jsonData.length; rowIndex++) {
-        const row = jsonData[rowIndex]
-        let xPosition = margin
-        
-        // Check if we need a new page
-        if (yPosition > pageHeight - margin - lineHeight) {
-          pdf.addPage()
-          yPosition = margin + 10
-        }
-        
-        // Add row data
-        for (let colIndex = 0; colIndex < row.length && colIndex < 8; colIndex++) {
-          const cellValue = String(row[colIndex] || '')
-          const maxWidth = (pageWidth - 2 * margin) / Math.min(row.length, 8)
-          
-          if (cellValue.length > 15) {
-            pdf.text(cellValue.substring(0, 15) + '...', xPosition, yPosition)
-          } else {
-            pdf.text(cellValue, xPosition, yPosition)
-          }
-          
-          xPosition += maxWidth
-        }
-        
-        yPosition += lineHeight
+      if (tableData.body.length > 0) {
+        // Generate table with preserved formatting
+        pdf.autoTable({
+          head: tableData.head.length > 0 ? [tableData.head] : undefined,
+          body: tableData.body,
+          startY: 10,
+          styles: {
+            fontSize: 9,
+            cellPadding: 2,
+            overflow: 'linebreak',
+            halign: 'left'
+          },
+          headStyles: {
+            fillColor: [240, 240, 240],
+            textColor: [0, 0, 0],
+            fontStyle: 'bold'
+          },
+          columnStyles: tableData.columnStyles,
+          didParseCell: (data) => {
+            // Apply cell-specific formatting
+            const cellRef = XLSX.utils.encode_cell({ r: data.row.index, c: data.column.index })
+            const formatting = cellFormatting[cellRef]
+            
+            if (formatting) {
+              if (formatting.bold) {
+                data.cell.styles.fontStyle = 'bold'
+              }
+              if (formatting.italic) {
+                data.cell.styles.fontStyle = data.cell.styles.fontStyle === 'bold' ? 'bolditalic' : 'italic'
+              }
+              if (formatting.align) {
+                data.cell.styles.halign = formatting.align
+              }
+              if (formatting.bgColor) {
+                data.cell.styles.fillColor = formatting.bgColor
+              }
+              if (formatting.textColor) {
+                data.cell.styles.textColor = formatting.textColor
+              }
+            }
+          },
+          margin: { top: 10, right: 10, bottom: 10, left: 10 },
+          pageBreak: 'auto',
+          showHead: tableData.head.length > 0
+        })
       }
       
       // Generate PDF buffer
@@ -149,6 +164,122 @@ async processWorksheets(workbook, selectedWorksheets, onProgress) {
     return zip
   }
 
+  extractCellFormatting(sheet) {
+    const formatting = {}
+    
+    // Extract formatting from each cell
+    Object.keys(sheet).forEach(cellRef => {
+      if (cellRef.startsWith('!')) return // Skip metadata
+      
+      const cell = sheet[cellRef]
+      if (!cell) return
+      
+      const cellFormatting = {}
+      
+      // Extract alignment
+      if (cell.s && cell.s.alignment) {
+        const align = cell.s.alignment.horizontal
+        if (align === 'center') cellFormatting.align = 'center'
+        else if (align === 'right') cellFormatting.align = 'right'
+        else cellFormatting.align = 'left'
+      }
+      
+      // Extract font styling
+      if (cell.s && cell.s.font) {
+        if (cell.s.font.bold) cellFormatting.bold = true
+        if (cell.s.font.italic) cellFormatting.italic = true
+        if (cell.s.font.color && cell.s.font.color.rgb) {
+          const rgb = cell.s.font.color.rgb
+          cellFormatting.textColor = [
+            parseInt(rgb.substr(2, 2), 16),
+            parseInt(rgb.substr(4, 2), 16),
+            parseInt(rgb.substr(6, 2), 16)
+          ]
+        }
+      }
+      
+      // Extract background color
+      if (cell.s && cell.s.fill && cell.s.fill.bgColor && cell.s.fill.bgColor.rgb) {
+        const rgb = cell.s.fill.bgColor.rgb
+        cellFormatting.bgColor = [
+          parseInt(rgb.substr(2, 2), 16),
+          parseInt(rgb.substr(4, 2), 16),
+          parseInt(rgb.substr(6, 2), 16)
+        ]
+      }
+      
+      if (Object.keys(cellFormatting).length > 0) {
+        formatting[cellRef] = cellFormatting
+      }
+    })
+    
+    return formatting
+  }
+
+  prepareTableData(jsonData, cellFormatting, sheet) {
+    if (!jsonData || jsonData.length === 0) {
+      return { head: [], body: [], columnStyles: {} }
+    }
+    
+    // Calculate column widths based on content
+    const columnWidths = {}
+    const maxColumns = Math.max(...jsonData.map(row => row.length))
+    
+    for (let col = 0; col < maxColumns; col++) {
+      let maxWidth = 20 // Minimum width
+      for (let row = 0; row < jsonData.length; row++) {
+        const cellValue = String(jsonData[row][col] || '')
+        const estimatedWidth = Math.min(cellValue.length * 2.5, 60) // Max 60mm
+        maxWidth = Math.max(maxWidth, estimatedWidth)
+      }
+      columnWidths[col] = { cellWidth: maxWidth }
+    }
+    
+    // Determine if first row should be header
+    const hasHeader = this.detectHeader(jsonData)
+    
+    let head = []
+    let body = jsonData
+    
+    if (hasHeader && jsonData.length > 1) {
+      head = jsonData[0].map(cell => String(cell || ''))
+      body = jsonData.slice(1)
+    }
+    
+    // Convert body to strings and handle empty cells
+    body = body.map(row => 
+      row.map(cell => String(cell || ''))
+    )
+    
+    return {
+      head,
+      body,
+      columnStyles: columnWidths
+    }
+  }
+
+  detectHeader(jsonData) {
+    if (!jsonData || jsonData.length < 2) return false
+    
+    const firstRow = jsonData[0]
+    const secondRow = jsonData[1]
+    
+    // Simple heuristic: if first row has more text and second row has more numbers, likely header
+    let textCount = 0
+    let numberCount = 0
+    
+    firstRow.forEach(cell => {
+      const str = String(cell || '')
+      if (str && isNaN(str)) textCount++
+    })
+    
+    secondRow.forEach(cell => {
+      const str = String(cell || '')
+      if (str && !isNaN(str)) numberCount++
+    })
+    
+    return textCount > numberCount && textCount > 0
+  }
 async generateDownload(zip, originalFileName) {
     await delay(300)
     
