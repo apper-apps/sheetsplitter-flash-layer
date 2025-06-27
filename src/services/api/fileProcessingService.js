@@ -93,7 +93,7 @@ reader.readAsArrayBuffer(file)
       const cellFormatting = this.extractCellFormatting(sheet)
       
       // Create PDF with color preservation settings
-      const pdf = new jsPDF({
+const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4',
@@ -106,8 +106,8 @@ reader.readAsArrayBuffer(file)
         outputDestination: 'save'
       })
       
-// Set color mode to RGB for proper color preservation
-      pdf.setColorSpace('DeviceRGB')
+      // Color space is handled automatically in jsPDF 2.5.1+
+      // RGB color mode is default for proper color preservation
       
       // Prepare table data with formatting
       const tableData = this.prepareTableData(jsonData, cellFormatting, sheet)
