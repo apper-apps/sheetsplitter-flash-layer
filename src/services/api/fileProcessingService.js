@@ -4,8 +4,8 @@ import { saveAs } from "file-saver";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import React from "react";
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 class FileProcessingService {
   async validateFile(file) {
     await delay(200)
@@ -72,10 +72,9 @@ class FileProcessingService {
       reader.onerror = () => {
         reject(new Error('Failed to read file'))
       }
-      
-      reader.readAsArrayBuffer(file)
+reader.readAsArrayBuffer(file)
     })
-}
+  }
 
   async processWorksheets(workbook, selectedWorksheets, onProgress) {
     await delay(500)
@@ -107,15 +106,15 @@ class FileProcessingService {
         outputDestination: 'save'
       })
       
-      // Set color mode to RGB for proper color preservation
+// Set color mode to RGB for proper color preservation
       pdf.setColorSpace('DeviceRGB')
-pdf.setColorSpace('DeviceRGB')
       
       // Prepare table data with formatting
       const tableData = this.prepareTableData(jsonData, cellFormatting, sheet)
       
       if (tableData.body.length > 0) {
         // Generate table with preserved formatting
+        pdf.autoTable({
           head: tableData.head.length > 0 ? [tableData.head] : undefined,
           body: tableData.body,
           startY: 10,
@@ -173,11 +172,10 @@ pdf.setColorSpace('DeviceRGB')
         onProgress(progress)
       }
       
-      await delay(100) // Small delay for progress visualization
+await delay(100) // Small delay for progress visualization
     }
     
     return zip
-return zip
   }
 
   extractCellFormatting(sheet) {
@@ -487,14 +485,13 @@ return zip
       if (str && isNaN(str)) textCount++
     })
     
-    secondRow.forEach(cell => {
+secondRow.forEach(cell => {
       const str = String(cell || '')
       if (str && !isNaN(str)) numberCount++
     })
     
-return textCount > numberCount && textCount > 0
+    return textCount > numberCount && textCount > 0
   }
-
   async generateDownload(zip, originalFileName) {
     await delay(300)
     const zipBlob = await zip.generateAsync({ type: 'blob' })
