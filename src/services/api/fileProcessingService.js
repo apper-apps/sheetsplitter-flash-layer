@@ -164,8 +164,11 @@ async processWorksheets(workbook, selectedWorksheets, onProgress) {
     return zip
   }
 
-  extractCellFormatting(sheet) {
+extractCellFormatting(sheet) {
     const formatting = {}
+    
+    // Extract table-level formatting patterns
+    const tableStyles = this.extractTableStyles(sheet)
     
     // Extract formatting from each cell
     Object.keys(sheet).forEach(cellRef => {
@@ -175,6 +178,7 @@ async processWorksheets(workbook, selectedWorksheets, onProgress) {
       if (!cell) return
       
       const cellFormatting = {}
+      const cellCoords = XLSX.utils.decode_cell(cellRef)
       
       // Extract alignment
       if (cell.s && cell.s.alignment) {
@@ -188,24 +192,40 @@ async processWorksheets(workbook, selectedWorksheets, onProgress) {
       if (cell.s && cell.s.font) {
         if (cell.s.font.bold) cellFormatting.bold = true
         if (cell.s.font.italic) cellFormatting.italic = true
-        if (cell.s.font.color && cell.s.font.color.rgb) {
-          const rgb = cell.s.font.color.rgb
-          cellFormatting.textColor = [
-            parseInt(rgb.substr(2, 2), 16),
-            parseInt(rgb.substr(4, 2), 16),
-            parseInt(rgb.substr(6, 2), 16)
-          ]
+        
+        // Enhanced text color extraction
+        const textColor = this.extractColor(cell.s.font.color)
+        if (textColor) {
+          cellFormatting.textColor = textColor
         }
       }
       
-      // Extract background color
-      if (cell.s && cell.s.fill && cell.s.fill.bgColor && cell.s.fill.bgColor.rgb) {
-        const rgb = cell.s.fill.bgColor.rgb
-        cellFormatting.bgColor = [
-          parseInt(rgb.substr(2, 2), 16),
-          parseInt(rgb.substr(4, 2), 16),
-          parseInt(rgb.substr(6, 2), 16)
-        ]
+      // Enhanced background color extraction
+      let bgColor = null
+      if (cell.s && cell.s.fill) {
+        // Try different fill color properties
+        bgColor = this.extractColor(cell.s.fill.bgColor) || 
+                 this.extractColor(cell.s.fill.fgColor) ||
+                 this.extractColor(cell.s.fill.patternForegroundColor)
+      }
+      
+      // Apply table-level banded row coloring if no explicit cell color
+      if (!bgColor && tableStyles.bandedRows) {
+        const isEvenRow = cellCoords.r % 2 === 0
+        if (isEvenRow && tableStyles.evenRowColor) {
+          bgColor = tableStyles.evenRowColor
+        } else if (!isEvenRow && tableStyles.oddRowColor) {
+          bgColor = tableStyles.oddRowColor
+        }
+      }
+      
+      // Apply table background color as fallback
+      if (!bgColor && tableStyles.tableBackgroundColor) {
+        bgColor = tableStyles.tableBackgroundColor
+      }
+      
+      if (bgColor) {
+        cellFormatting.bgColor = bgColor
       }
       
       if (Object.keys(cellFormatting).length > 0) {
@@ -214,6 +234,185 @@ async processWorksheets(workbook, selectedWorksheets, onProgress) {
     })
     
     return formatting
+  }
+
+  extractTableStyles(sheet) {
+    const styles = {
+      bandedRows: false,
+      evenRowColor: null,
+      oddRowColor: null,
+      tableBackgroundColor: null
+    }
+    
+    // Detect banded rows by analyzing row patterns
+    const cells = Object.keys(sheet).filter(ref => !ref.startsWith('!'))
+    const rowGroups = {}
+    
+    cells.forEach(cellRef => {
+      const coords = XLSX.utils.decode_cell(cellRef)
+      if (!rowGroups[coords.r]) rowGroups[coords.r] = []
+      rowGroups[coords.r].push(cellRef)
+    })
+    
+    // Check for alternating row colors
+    const rowColors = {}
+    Object.keys(rowGroups).forEach(rowNum => {
+      const row = parseInt(rowNum)
+      const rowCells = rowGroups[row]
+      
+      // Get predominant background color for this row
+      const colors = []
+      rowCells.forEach(cellRef => {
+        const cell = sheet[cellRef]
+        if (cell && cell.s && cell.s.fill) {
+          const color = this.extractColor(cell.s.fill.bgColor) || 
+                       this.extractColor(cell.s.fill.fgColor)
+          if (color) colors.push(color)
+        }
+      })
+      
+      if (colors.length > 0) {
+        // Use most common color in row
+        const colorCounts = {}
+        colors.forEach(color => {
+          const colorKey = color.join(',')
+          colorCounts[colorKey] = (colorCounts[colorKey] || 0) + 1
+        })
+        
+        const mostCommonColor = Object.keys(colorCounts).reduce((a, b) => 
+          colorCounts[a] > colorCounts[b] ? a : b
+        )
+        rowColors[row] = mostCommonColor.split(',').map(Number)
+      }
+    })
+    
+    // Detect banded pattern
+    const rowNums = Object.keys(rowColors).map(Number).sort((a, b) => a - b)
+    if (rowNums.length >= 4) {
+      let bandedPattern = true
+      let evenColor = null
+      let oddColor = null
+      
+      for (let i = 0; i < rowNums.length - 1; i++) {
+        const currentRow = rowNums[i]
+        const nextRow = rowNums[i + 1]
+        
+        if (nextRow - currentRow === 1) { // Consecutive rows
+          const currentColor = rowColors[currentRow]
+          const nextColor = rowColors[nextRow]
+          
+          if (currentRow % 2 === 0) {
+            if (!evenColor) evenColor = currentColor
+            if (!oddColor) oddColor = nextColor
+          } else {
+            if (!oddColor) oddColor = currentColor
+            if (!evenColor) evenColor = nextColor
+          }
+          
+          // Check if pattern holds
+          const expectedEvenColor = evenColor ? evenColor.join(',') : null
+          const expectedOddColor = oddColor ? oddColor.join(',') : null
+          const actualCurrentColor = currentColor ? currentColor.join(',') : null
+          const actualNextColor = nextColor ? nextColor.join(',') : null
+          
+          if (currentRow % 2 === 0) {
+            if (actualCurrentColor !== expectedEvenColor || actualNextColor !== expectedOddColor) {
+              bandedPattern = false
+              break
+            }
+          } else {
+            if (actualCurrentColor !== expectedOddColor || actualNextColor !== expectedEvenColor) {
+              bandedPattern = false
+              break
+            }
+          }
+        }
+      }
+      
+      if (bandedPattern && evenColor && oddColor) {
+        styles.bandedRows = true
+        styles.evenRowColor = evenColor
+        styles.oddRowColor = oddColor
+      }
+    }
+    
+    return styles
+  }
+
+  extractColor(colorObj) {
+    if (!colorObj) return null
+    
+    // Handle RGB color
+    if (colorObj.rgb) {
+      const rgb = colorObj.rgb.startsWith('#') ? colorObj.rgb.slice(1) : colorObj.rgb
+      if (rgb.length === 6) {
+        return [
+          parseInt(rgb.substr(0, 2), 16),
+          parseInt(rgb.substr(2, 2), 16),
+          parseInt(rgb.substr(4, 2), 16)
+        ]
+      } else if (rgb.length === 8) {
+        // ARGB format - skip alpha channel
+        return [
+          parseInt(rgb.substr(2, 2), 16),
+          parseInt(rgb.substr(4, 2), 16),
+          parseInt(rgb.substr(6, 2), 16)
+        ]
+      }
+    }
+    
+    // Handle indexed colors (Excel's default palette)
+    if (typeof colorObj.indexed === 'number') {
+      const indexedColors = {
+        0: [0, 0, 0],        // Black
+        1: [255, 255, 255],  // White
+        2: [255, 0, 0],      // Red
+        3: [0, 255, 0],      // Green
+        4: [0, 0, 255],      // Blue
+        5: [255, 255, 0],    // Yellow
+        6: [255, 0, 255],    // Magenta
+        7: [0, 255, 255],    // Cyan
+        8: [128, 0, 0],      // Dark Red
+        9: [0, 128, 0],      // Dark Green
+        10: [0, 0, 128],     // Dark Blue
+        64: [128, 128, 128], // Gray 50%
+        65: [192, 192, 192], // Gray 25%
+        // Add more indexed colors as needed
+      }
+      return indexedColors[colorObj.indexed] || null
+    }
+    
+    // Handle theme colors with tint
+    if (typeof colorObj.theme === 'number') {
+      const themeColors = {
+        0: [255, 255, 255],  // Background 1
+        1: [0, 0, 0],        // Text 1
+        2: [238, 236, 225],  // Background 2
+        3: [31, 73, 125],    // Text 2
+        4: [79, 129, 189],   // Accent 1
+        5: [192, 80, 77],    // Accent 2
+        6: [155, 187, 89],   // Accent 3
+        7: [128, 100, 162],  // Accent 4
+        8: [75, 172, 198],   // Accent 5
+        9: [247, 150, 70],   // Accent 6
+      }
+      
+      let baseColor = themeColors[colorObj.theme]
+      if (baseColor && colorObj.tint) {
+        // Apply tint to theme color
+        const tint = colorObj.tint
+        baseColor = baseColor.map(channel => {
+          if (tint < 0) {
+            return Math.round(channel * (1 + tint))
+          } else {
+            return Math.round(channel * (1 - tint) + 255 * tint)
+          }
+        })
+      }
+      return baseColor || null
+    }
+    
+    return null
   }
 
   prepareTableData(jsonData, cellFormatting, sheet) {
