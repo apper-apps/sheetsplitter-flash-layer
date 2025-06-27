@@ -1,9 +1,10 @@
-import * as XLSX from 'xlsx'
-import JSZip from 'jszip'
-import { saveAs } from 'file-saver'
-import { jsPDF } from 'jspdf'
-import 'jspdf-autotable'
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+import * as XLSX from "xlsx";
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
+import { jsPDF } from "jspdf";
+import "jspdf-autotable";
+import React from "react";
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 class FileProcessingService {
   async validateFile(file) {
@@ -74,11 +75,10 @@ class FileProcessingService {
       
       reader.readAsArrayBuffer(file)
     })
-  }
+}
 
-async processWorksheets(workbook, selectedWorksheets, onProgress) {
+  async processWorksheets(workbook, selectedWorksheets, onProgress) {
     await delay(500)
-    
     const zip = new JSZip()
     const totalSheets = selectedWorksheets.length
     
@@ -90,17 +90,32 @@ async processWorksheets(workbook, selectedWorksheets, onProgress) {
       const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false })
       
       // Extract cell formatting information
+// Extract cell formatting information
       const cellFormatting = this.extractCellFormatting(sheet)
       
-      // Create PDF
-      const pdf = new jsPDF('p', 'mm', 'a4')
+      // Create PDF with color preservation settings
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        putOnlyUsedFonts: true,
+        floatPrecision: 'smart',
+        compress: true,
+        precision: 2,
+        userUnit: 1,
+        hotfixes: ['px_scaling'],
+        outputDestination: 'save'
+      })
+      
+      // Set color mode to RGB for proper color preservation
+      pdf.setColorSpace('DeviceRGB')
+pdf.setColorSpace('DeviceRGB')
       
       // Prepare table data with formatting
       const tableData = this.prepareTableData(jsonData, cellFormatting, sheet)
       
       if (tableData.body.length > 0) {
         // Generate table with preserved formatting
-        pdf.autoTable({
           head: tableData.head.length > 0 ? [tableData.head] : undefined,
           body: tableData.body,
           startY: 10,
@@ -162,11 +177,11 @@ async processWorksheets(workbook, selectedWorksheets, onProgress) {
     }
     
     return zip
+return zip
   }
 
-extractCellFormatting(sheet) {
+  extractCellFormatting(sheet) {
     const formatting = {}
-    
     // Extract table-level formatting patterns
     const tableStyles = this.extractTableStyles(sheet)
     
@@ -477,11 +492,11 @@ extractCellFormatting(sheet) {
       if (str && !isNaN(str)) numberCount++
     })
     
-    return textCount > numberCount && textCount > 0
+return textCount > numberCount && textCount > 0
   }
-async generateDownload(zip, originalFileName) {
+
+  async generateDownload(zip, originalFileName) {
     await delay(300)
-    
     const zipBlob = await zip.generateAsync({ type: 'blob' })
     const baseName = originalFileName.replace(/\.[^/.]+$/, '')
     const zipFileName = `${baseName}_split_PDFs.zip`
