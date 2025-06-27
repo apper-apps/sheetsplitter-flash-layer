@@ -14,13 +14,13 @@ const Home = () => {
         className="text-center space-y-6"
       >
         <div className="space-y-4">
-          <h1 className="text-4xl md:text-5xl font-bold text-surface-900 leading-relaxed">
+<h1 className="text-4xl md:text-5xl font-bold text-surface-900 leading-relaxed">
             Split Excel Worksheets
-            <span className="block text-primary leading-relaxed">Into Separate Files</span>
+            <span className="block text-primary leading-relaxed">Into Separate PDFs</span>
           </h1>
           <p className="text-xl text-surface-600 max-w-2xl mx-auto">
-            Upload your multi-sheet Excel workbook and automatically split each worksheet 
-            into individual Excel files. Download everything as a organized ZIP archive.
+            Upload your multi-sheet Excel workbook and automatically convert each worksheet 
+            into individual PDF files. Download everything as an organized ZIP archive.
           </p>
         </div>
       </motion.div>
@@ -64,8 +64,8 @@ animate={{ opacity: 1, y: 0 }}
                 <ApperIcon name="Settings" size={24} className="text-primary" />
               </div>
               <h3 className="font-medium text-surface-900">Process</h3>
-              <p className="text-sm text-surface-600">
-                We automatically detect and split each worksheet
+<p className="text-sm text-surface-600">
+                We automatically convert each worksheet into a PDF
               </p>
             </div>
             
@@ -75,7 +75,7 @@ animate={{ opacity: 1, y: 0 }}
               </div>
               <h3 className="font-medium text-surface-900">Download</h3>
               <p className="text-sm text-surface-600">
-                Get a ZIP file with all worksheets as separate Excel files
+                Get a ZIP file with all worksheets as separate PDF files
               </p>
             </div>
           </div>

@@ -98,7 +98,7 @@ const handleProcessFile = async () => {
 setStage('complete')
       setProgress(100)
 
-      toast.success(`${selectedWorksheetObjects.length} worksheets processed successfully! Ready for download.`)
+toast.success(`${selectedWorksheetObjects.length} worksheets converted to PDFs successfully! Ready for download.`)
     } catch (err) {
       setError(err.message)
       setStage('idle')
@@ -272,7 +272,7 @@ setStage('complete')
                   onClick={handleProcessFile}
                   disabled={stage !== 'idle' || selectedWorksheets.length === 0}
                 >
-                  Split Selected Worksheets ({selectedWorksheets.length})
+Convert to PDFs ({selectedWorksheets.length})
                 </Button>
               )}
             </div>
@@ -348,7 +348,7 @@ setStage('complete')
             Processing Complete!
           </h3>
 <p className="text-green-700 mb-4">
-            Your {selectedWorksheets.length} selected worksheets have been split into separate files and packaged into a ZIP archive.
+Your {selectedWorksheets.length} selected worksheets have been converted to PDF files and packaged into a ZIP archive.
           </p>
           
           <div className="flex justify-center space-x-3">

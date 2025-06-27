@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx'
 import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
-
+import { jsPDF } from 'jspdf'
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
 class FileProcessingService {
@@ -82,23 +82,60 @@ async processWorksheets(workbook, selectedWorksheets, onProgress) {
     const totalSheets = selectedWorksheets.length
     
     for (let i = 0; i < selectedWorksheets.length; i++) {
-const worksheet = selectedWorksheets[i]
+      const worksheet = selectedWorksheets[i]
       
-      // Create new workbook with single sheet
-      const newWorkbook = XLSX.utils.book_new()
+      // Get worksheet data
       const sheet = workbook.Sheets[worksheet.name]
+      const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
       
-      XLSX.utils.book_append_sheet(newWorkbook, sheet, worksheet.name)
+      // Create PDF
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 10
+      const lineHeight = 6
+      let yPosition = margin + 10
       
-      // Generate Excel buffer
-      const excelBuffer = XLSX.write(newWorkbook, {
-        bookType: 'xlsx',
-        type: 'array'
-      })
+      // Add title
+      pdf.setFontSize(16)
+      pdf.text(worksheet.name, margin, yPosition)
+      yPosition += lineHeight * 2
+      
+      // Add data
+      pdf.setFontSize(10)
+      for (let rowIndex = 0; rowIndex < jsonData.length; rowIndex++) {
+        const row = jsonData[rowIndex]
+        let xPosition = margin
+        
+        // Check if we need a new page
+        if (yPosition > pageHeight - margin - lineHeight) {
+          pdf.addPage()
+          yPosition = margin + 10
+        }
+        
+        // Add row data
+        for (let colIndex = 0; colIndex < row.length && colIndex < 8; colIndex++) {
+          const cellValue = String(row[colIndex] || '')
+          const maxWidth = (pageWidth - 2 * margin) / Math.min(row.length, 8)
+          
+          if (cellValue.length > 15) {
+            pdf.text(cellValue.substring(0, 15) + '...', xPosition, yPosition)
+          } else {
+            pdf.text(cellValue, xPosition, yPosition)
+          }
+          
+          xPosition += maxWidth
+        }
+        
+        yPosition += lineHeight
+      }
+      
+      // Generate PDF buffer
+      const pdfBuffer = pdf.output('arraybuffer')
       
       // Add to zip with clean filename
-      const fileName = `${worksheet.name.replace(/[\/\\:*?"<>|]/g, '_')}.xlsx`
-      zip.file(fileName, excelBuffer)
+      const fileName = `${worksheet.name.replace(/[\/\\:*?"<>|]/g, '_')}.pdf`
+      zip.file(fileName, pdfBuffer)
       
       // Update progress
       const progress = Math.round(((i + 1) / totalSheets) * 100)
@@ -112,12 +149,12 @@ const worksheet = selectedWorksheets[i]
     return zip
   }
 
-  async generateDownload(zip, originalFileName) {
+async generateDownload(zip, originalFileName) {
     await delay(300)
     
     const zipBlob = await zip.generateAsync({ type: 'blob' })
     const baseName = originalFileName.replace(/\.[^/.]+$/, '')
-    const zipFileName = `${baseName}_split_worksheets.zip`
+    const zipFileName = `${baseName}_split_PDFs.zip`
     
     return {
       blob: zipBlob,
